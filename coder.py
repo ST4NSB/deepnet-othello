@@ -4,20 +4,11 @@ class Coder:
     @staticmethod
     def encode_game_string(color):
         if color == 'black':
-            return 1
+            return 'b'
         elif color == 'white': 
-            return -1
+            return 'w'
         else: 
-            return 0
-    
-    @staticmethod
-    def decode_number(number):
-        if number == 1:
-            return 'black'
-        elif number == -1:
-            return 'white'
-        else:
-            return None
+            return '0'
 
     @staticmethod
     def encode_move(i, j):

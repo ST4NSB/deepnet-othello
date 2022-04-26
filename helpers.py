@@ -11,3 +11,10 @@ class Helpers:
     @staticmethod
     def get_first_number(str):
         return int(re.search('[0-9]+', str).group())
+
+    @staticmethod
+    def convert_list_moves_to_string_moves(move_list):
+        seq = ''
+        for item in move_list:
+            seq += item
+        return seq
