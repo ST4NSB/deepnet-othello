@@ -8,7 +8,7 @@ class Coder:
         elif color == 'white': 
             return 'w'
         else: 
-            return '0'
+            return '.'
 
     @staticmethod
     def encode_move(i, j):

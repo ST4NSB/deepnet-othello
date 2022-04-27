@@ -1,4 +1,3 @@
-from msilib import sequence
 import requests
 from helpers import *
 from coder import *
@@ -27,42 +26,64 @@ class Game:
         # game logic
         turn, moves, winner = self.get_game_details(game_id)
         self.sequence = Helpers.convert_list_moves_to_string_moves(moves)
-        self.__move_sequence_to_board(color)
+        self.__move_sequence_to_board()
         while turn != 'finished':
             if turn != color: 
                 turn, moves, winner = self.get_game_details(game_id)
                 self.sequence = Helpers.convert_list_moves_to_string_moves(moves)
-                self.__move_sequence_to_board(color)
+                self.__move_sequence_to_board()
                 continue
                 
             self.calculate_move(game_id, color)
 
             turn, moves, winner = self.get_game_details(game_id)
             self.sequence = Helpers.convert_list_moves_to_string_moves(moves)
-            self.__move_sequence_to_board(color)
+            self.move_index = len(self.sequence) // 2 + 1
+            self.__move_sequence_to_board()
 
+        b, w = self.get_scorepoints()
+        self.logger.log_info(f'move index: {self.move_index - 1}')
+        self.logger.log_info(f'black score: {b}, white score: {w}')
+        self.logger.log_board(self.board, self.BOARD_SIZE)
 
-        #move = self.get_game_turn(1357275)
-        #print(move)
-        pass
+        return (self.sequence, winner)
 
-    def get_score(self):
-        # to be added
-        # (black: points, white: points)
-        # on board impl
-        pass 
+    def get_scorepoints(self):
+        black_points, white_points = 0, 0
+        for i in range(self.BOARD_SIZE):
+            for j in range(self.BOARD_SIZE):
+                if self.board[i][j] == Coder.encode_game_string('black'):
+                    black_points += 1
+                elif self.board[i][j] == Coder.encode_game_string('white'):
+                    white_points += 1
+
+        return (black_points, white_points)        
 
     def calculate_move(self, game_id, color):
         valid_moves = self.get_valid_moves(color)
-        coord_move = self.predictor.predict_randomly(valid_moves)
-        
+        if len(valid_moves) == 0:
+            return
+
+        encoded_moves = []
+        for move in valid_moves:
+            encoded_moves.append(Coder.encode_move(move[0], move[1]))
+        self.logger.log_info(f'move index: {self.move_index}')
+        self.logger.log_info(f'valid moves indexs: {valid_moves}')
+        self.logger.log_info(f'valid moves: {encoded_moves}')
+        b, w = self.get_scorepoints()
+        self.logger.log_info(f'black score: {b}, white score: {w}')
+        self.logger.log_board(self.board, self.BOARD_SIZE)
+
+        coord_move = list(valid_moves)[-1]
+        if len(valid_moves) > 1:
+            coord_move = self.predictor.predict_randomly(valid_moves)
+
         encoded_move = Coder.encode_move(coord_move[0], coord_move[1])
 
         self.make_move(game_id, encoded_move)
-
         self.sequence += encoded_move
-        self.move_index += 2
-        self.board[coord_move[0]][coord_move[1]] = Coder.encode_game_string(color)
+        # self.move_index += 1
+        # self.__move_sequence_to_board()
 
     def get_valid_moves(self, color):
         valid_moves = set()
@@ -111,19 +132,28 @@ class Game:
         else:
             return inc
 
-    def __move_sequence_to_board(self, color):
+    def __move_sequence_to_board(self):
         self.board = self.clear_board()
         coord_moves = Coder.decode_sequence(self.sequence)
         color_turn = 0
 
         for move in coord_moves:
             if color_turn % 2 == 0:
-                self.board[move[0]][move[1]] = Coder.encode_game_string('black')
-                self.__take_color_discs_on_move('black', move[0], move[1])
+                if move in self.get_valid_moves('black'):
+                    self.board[move[0]][move[1]] = Coder.encode_game_string('black')
+                    self.__take_color_discs_on_move('black', move[0], move[1])
+                    color_turn += 1
+                else:
+                    self.board[move[0]][move[1]] = Coder.encode_game_string('white')
+                    self.__take_color_discs_on_move('white', move[0], move[1])
             else:
-                self.board[move[0]][move[1]] = Coder.encode_game_string('white')
-                self.__take_color_discs_on_move('white', move[0], move[1])
-            color_turn += 1
+                if move in self.get_valid_moves('white'):
+                    self.board[move[0]][move[1]] = Coder.encode_game_string('white')
+                    self.__take_color_discs_on_move('white', move[0], move[1])
+                    color_turn += 1
+                else:
+                    self.board[move[0]][move[1]] = Coder.encode_game_string('black')
+                    self.__take_color_discs_on_move('black', move[0], move[1])     
 
     def __take_color_discs_on_move(self, color, i, j):
         for k in range(8):
@@ -214,7 +244,7 @@ class Game:
 
         response = requests.request("POST", url, headers=headers, data=payload)
         result = json.loads(json.loads(response.text)['content'])
-        return (result['turn'], [] if self.sequence == '' else result['moves'], result['winner'])
+        return (result['turn'], [] if 'moves' not in result else result['moves'], result['winner'])
 
     def make_move(self, game_id, move):
         url = "https://www.eothello.com/make-move"

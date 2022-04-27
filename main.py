@@ -8,7 +8,9 @@ def main():
     predictor = Predictor()
     
     game = Game(logger, predictor)
-    game.init_game(config.settings['color'], config.settings['bot_level'])
+    seq, winner = game.init_game(config.settings['color'], config.settings['bot_level'])
+
+    print(f"\n\nWinner is: {winner}, Game sequence: {seq}")
 
 if __name__ == "__main__":
     main()
