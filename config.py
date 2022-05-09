@@ -1,5 +1,6 @@
 settings = dict(
-    number_of_games = 100,
-    color = 'black',
-    bot_level = 1
+    number_of_games = 1,
+    color = 'black', # black or white
+    bot_level = 1, # 1 or 2,
+    showDebug=True
 )

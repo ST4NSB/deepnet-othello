@@ -1,3 +1,4 @@
+from numpy import full
 import requests
 from helpers import *
 from coder import *
@@ -6,18 +7,21 @@ from dotenv import load_dotenv
 import json
 
 # creates the game interface on www.othello.com
-class Game:
-    def __init__(self, logger, predictor):
+class GameGym:
+    def __init__(self, logger, predictor, agent, debug = False):
         load_dotenv()
         self.__cookie = os.getenv('COOKIE')
         self.BOARD_SIZE = 8
         self.logger = logger
         self.predictor = predictor
+        self.agent = agent
+        self.debug = debug
 
     def init_game(self, color, bot_level):
         # init
         self.board = self.clear_board()
         self.sequence = ''
+        self.reward_history = []
         self.move_index = 2 if color == 'white' else 1
 
         # create game
@@ -28,20 +32,9 @@ class Game:
         self.sequence = Helpers.convert_list_moves_to_string_moves(moves)
         self.__move_sequence_to_board()
         while turn != 'finished':
-            if turn != color: 
-                turn, moves, winner = self.get_game_details(game_id)
-                new_sequence = Helpers.convert_list_moves_to_string_moves(moves)
-                if len(new_sequence) >= len(self.sequence):
-                    self.sequence = new_sequence
-                else:
-                    break
-                self.__move_sequence_to_board()
-                continue
-                
-            self.calculate_move(game_id, color)
+            self.calculate_move(game_id, color, turn)
 
             turn, moves, winner = self.get_game_details(game_id)
-            
             new_sequence = Helpers.convert_list_moves_to_string_moves(moves)
             if len(new_sequence) >= len(self.sequence):
                 self.sequence = new_sequence
@@ -50,11 +43,14 @@ class Game:
             self.move_index = len(self.sequence) // 2 + 1
             self.__move_sequence_to_board()
 
-        b, w = self.get_scorepoints()
-        self.logger.log_info(f'move index: {self.move_index - 1}')
-        self.logger.log_info(f'black score: {b}, white score: {w}')
-        self.logger.log_info(f'reward: {self.get_reward(color)}')
-        self.logger.log_board(self.board, self.BOARD_SIZE)
+            self.reward_history.append(self.get_reward(color, turn))
+
+        if self.debug:
+            b, w = self.get_scorepoints()
+            self.logger.log_info(f'move index: {self.move_index - 1}')
+            self.logger.log_info(f'black score: {b}, white score: {w}')
+            self.logger.log_info(f'reward: {self.get_reward(color, turn)}')
+            self.logger.log_board(self.board, self.BOARD_SIZE)
 
         if not winner:
             b, w = self.get_scorepoints()
@@ -66,12 +62,166 @@ class Game:
             else: 
                 winner = 'equal'
 
-        return (self.sequence, winner)
+        return (self.sequence, winner, self.reward_history)
 
-    # reward is positive for black, negative for white
-    def get_reward(self, color):
+    def get_reward(self, color, turn):
+        opposite_color = 'white' if color == 'black' else 'black'
         black_points, white_points = self.get_scorepoints()
-        return (black_points - white_points) if color == 'black' else (0 - (black_points - white_points))
+        
+        score = (black_points - white_points) if color == 'black' else (white_points - black_points)
+        score = self.__get_points_per_pieces(score)
+        score = self.__get_points_per_corners(color, opposite_color, score)
+        score = self.__get_points_per_danger_zones(color, opposite_color, score)
+        score = self.__get_points_around_corner(color, opposite_color, score)
+        score = self.__get_points_around_danger(color, opposite_color, score)
+        score = self.__get_points_by_available_moves(color, opposite_color, turn, score)
+        score = self.__get_points_by_middle_control(color, opposite_color, score)
+
+        return score
+
+    def __get_points_by_middle_control(self, color, opposite_color, points):
+        middle_start = 2
+        middle_end = 5
+        positive_value = 1.1
+        negative_value = 0.9
+
+        for i in range(middle_start, middle_end):
+            for j in range(middle_start, middle_end):
+                if self.board[i][j] == Coder.encode_game_string(color):
+                    points *= positive_value
+                elif self.board[i][j] == Coder.encode_game_string(opposite_color):
+                    points *= negative_value
+        
+        return points
+
+    def __get_points_by_available_moves(self, color, opposite_color, turn, points):
+        move_factor = 0.5
+        if turn == color:
+            points *= (len(self.get_valid_moves(color)) * move_factor)
+        elif turn == opposite_color:
+            points /= (len(self.get_valid_moves(opposite_color)) * move_factor)
+        return points
+
+    def __get_points_around_danger(self, color, opposite_color, points):
+        positive_value = 1.3
+        negative_value = 0.85
+        
+        for i in range(2, self.BOARD_SIZE - 3):
+            if self.board[i][1] == Coder.encode_game_string(color):
+                points *= negative_value
+            elif self.board[i][1] == Coder.encode_game_string(opposite_color):
+                points *= positive_value
+
+        for i in range(2, self.BOARD_SIZE - 3):
+            if self.board[i][self.BOARD_SIZE - 2] == Coder.encode_game_string(color):
+                points *= negative_value
+            elif self.board[i][self.BOARD_SIZE - 2] == Coder.encode_game_string(opposite_color):
+                points *= positive_value
+
+        for j in range(2, self.BOARD_SIZE - 3):
+            if self.board[1][j] == Coder.encode_game_string(color):
+                points *= negative_value
+            elif self.board[1][j] == Coder.encode_game_string(opposite_color):
+                points *= positive_value
+
+        for j in range(2, self.BOARD_SIZE - 3):
+            if self.board[self.BOARD_SIZE - 2][j] == Coder.encode_game_string(color):
+                points *= negative_value
+            elif self.board[self.BOARD_SIZE - 2][j] == Coder.encode_game_string(opposite_color):
+                points *= positive_value
+        
+        return points
+
+    def __get_points_around_corner(self, color, opposite_color, points):
+        positive_value = 1.2
+        negative_value = 0.9
+        
+        for i in range(1, self.BOARD_SIZE - 2):
+            if self.board[i][0] == Coder.encode_game_string(color):
+                points *= positive_value
+            elif self.board[i][0] == Coder.encode_game_string(opposite_color):
+                points *= negative_value
+
+        for i in range(1, self.BOARD_SIZE - 2):
+            if self.board[i][self.BOARD_SIZE - 1] == Coder.encode_game_string(color):
+                points *= positive_value
+            elif self.board[i][self.BOARD_SIZE - 1] == Coder.encode_game_string(opposite_color):
+                points *= negative_value
+
+        for j in range(1, self.BOARD_SIZE - 2):
+            if self.board[0][j] == Coder.encode_game_string(color):
+                points *= positive_value
+            elif self.board[0][j] == Coder.encode_game_string(opposite_color):
+                points *= negative_value
+
+        for j in range(1, self.BOARD_SIZE - 2):
+            if self.board[self.BOARD_SIZE - 1][j] == Coder.encode_game_string(color):
+                points *= positive_value
+            elif self.board[self.BOARD_SIZE - 1][j] == Coder.encode_game_string(opposite_color):
+                points *= negative_value
+        
+        return points
+
+
+    def __get_points_per_danger_zones(self, color, opposite_color, points):
+        points *= self.__get_points_danger(color, opposite_color, 1, 1)
+        points *= self.__get_points_danger(color, opposite_color, 1, self.BOARD_SIZE - 2)
+        points *= self.__get_points_danger(color, opposite_color, self.BOARD_SIZE - 2, 1)
+        points *= self.__get_points_danger(color, opposite_color, self.BOARD_SIZE - 2, self.BOARD_SIZE - 2)
+        return points
+
+    def __get_points_danger(self, color, opposite_color, i, j):
+        if self.board[i][j] == Coder.encode_game_string(color):
+            return 0.1
+        elif self.board[i][j] == Coder.encode_game_string(opposite_color):
+            return 1.85
+        return 1.0
+
+    def __get_points_per_corners(self, color, opposite_color, points):
+        points *= self.__get_points_corner(color, opposite_color, 0, 0)
+        points *= self.__get_points_corner(color, opposite_color, 0, self.BOARD_SIZE - 1)
+        points *= self.__get_points_corner(color, opposite_color, self.BOARD_SIZE - 1, 0)
+        points *= self.__get_points_corner(color, opposite_color, self.BOARD_SIZE - 1, self.BOARD_SIZE - 1)
+        return points
+    
+    def __get_points_corner(self, color, opposite_color, i, j):
+        if self.board[i][j] == Coder.encode_game_string(color):
+            return 3.0
+        elif self.board[i][j] == Coder.encode_game_string(opposite_color):
+            return 0.03
+        return 1.0
+
+    def __get_points_per_pieces(self, score):
+        lowest_difference = 1
+        losing_advantage = 3
+        
+        table = self.BOARD_SIZE * self.BOARD_SIZE
+        last_quarter_advantage = table - (table / 4)
+        full_advantage = (table - 5)
+        half_table = table / 2
+        
+        points = 1.0
+
+        if score == table:
+            points *= 100.0
+        elif score == -table:
+            points *= 0.00001
+        elif score >= full_advantage:
+            points *= 10.0
+        elif score >= last_quarter_advantage:
+            points *= 1.9
+        elif score <= -full_advantage:
+            points *= 0.01
+        elif score <= -last_quarter_advantage:
+            points *= 0.1
+        elif score >= -lowest_difference and score <= lowest_difference:
+            points *= 1.15
+        elif score > losing_advantage and score < half_table:
+            points *= (0.9 - (score * 0.1))
+        else: 
+            points *= 1.0
+
+        return points
 
     def get_scorepoints(self):
         black_points, white_points = 0, 0
@@ -84,21 +234,22 @@ class Game:
 
         return (black_points, white_points)        
 
-    def calculate_move(self, game_id, color):
+    def calculate_move(self, game_id, color, turn):
         valid_moves = self.get_valid_moves(color)
         if len(valid_moves) == 0:
             return
 
-        encoded_moves = []
-        for move in valid_moves:
-            encoded_moves.append(Coder.encode_move(move[0], move[1]))
-        self.logger.log_info(f'move index: {self.move_index}')
-        self.logger.log_info(f'valid moves indexs: {valid_moves}')
-        self.logger.log_info(f'valid moves: {encoded_moves}')
-        b, w = self.get_scorepoints()
-        self.logger.log_info(f'black score: {b}, white score: {w}')
-        self.logger.log_info(f'reward: {self.get_reward(color)}')
-        self.logger.log_board(self.board, self.BOARD_SIZE)
+        if self.debug:
+            encoded_moves = []
+            for move in valid_moves:
+                encoded_moves.append(Coder.encode_move(move[0], move[1]))
+            self.logger.log_info(f'move index: {self.move_index}')
+            self.logger.log_info(f'valid moves indexs: {valid_moves}')
+            self.logger.log_info(f'valid moves: {encoded_moves}')
+            b, w = self.get_scorepoints()
+            self.logger.log_info(f'black score: {b}, white score: {w}')
+            self.logger.log_info(f'reward: {self.get_reward(color, turn)}')
+            self.logger.log_board(self.board, self.BOARD_SIZE)
 
         coord_move = list(valid_moves)[-1]
         if len(valid_moves) > 1:
@@ -241,7 +392,8 @@ class Game:
         game_function_details = Helpers.find_game_details(response.text)
         game_id = Helpers.get_first_number(game_function_details)
 
-        self.logger.log_info(f'{game_id}, {type(game_id)}')
+        if self.debug:
+            self.logger.log_info(f'{game_id}, {type(game_id)}')
         return game_id
 
     def get_game_details(self, game_id):
@@ -297,7 +449,8 @@ class Game:
         }
 
         response = requests.request("POST", url, headers=headers, data=payload)
-        self.logger.log_info(f'Make move response code: {response.status_code}')
+        if self.debug:
+            self.logger.log_info(f'Make move response code: {response.status_code}')
             
     def clear_board(self):
         board = [[Coder.encode_game_string(None) for _ in range(self.BOARD_SIZE)] for _ in range(self.BOARD_SIZE)]
@@ -307,8 +460,3 @@ class Game:
         board[4][4] = Coder.encode_game_string('white')
         return board
         
-
-
-
-
-
