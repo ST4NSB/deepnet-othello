@@ -30,23 +30,48 @@ class Game:
         while turn != 'finished':
             if turn != color: 
                 turn, moves, winner = self.get_game_details(game_id)
-                self.sequence = Helpers.convert_list_moves_to_string_moves(moves)
+                new_sequence = Helpers.convert_list_moves_to_string_moves(moves)
+                if len(new_sequence) >= len(self.sequence):
+                    self.sequence = new_sequence
+                else:
+                    break
                 self.__move_sequence_to_board()
                 continue
                 
             self.calculate_move(game_id, color)
 
             turn, moves, winner = self.get_game_details(game_id)
-            self.sequence = Helpers.convert_list_moves_to_string_moves(moves)
+            
+            new_sequence = Helpers.convert_list_moves_to_string_moves(moves)
+            if len(new_sequence) >= len(self.sequence):
+                self.sequence = new_sequence
+            else:
+                break
             self.move_index = len(self.sequence) // 2 + 1
             self.__move_sequence_to_board()
 
         b, w = self.get_scorepoints()
         self.logger.log_info(f'move index: {self.move_index - 1}')
         self.logger.log_info(f'black score: {b}, white score: {w}')
+        self.logger.log_info(f'reward: {self.get_reward(color)}')
         self.logger.log_board(self.board, self.BOARD_SIZE)
 
+        if not winner:
+            b, w = self.get_scorepoints()
+            r = b - w
+            if r > 0:
+                winner = 'black'
+            elif r < 0:
+                winner = 'white'
+            else: 
+                winner = 'equal'
+
         return (self.sequence, winner)
+
+    # reward is positive for black, negative for white
+    def get_reward(self, color):
+        black_points, white_points = self.get_scorepoints()
+        return (black_points - white_points) if color == 'black' else (0 - (black_points - white_points))
 
     def get_scorepoints(self):
         black_points, white_points = 0, 0
@@ -72,6 +97,7 @@ class Game:
         self.logger.log_info(f'valid moves: {encoded_moves}')
         b, w = self.get_scorepoints()
         self.logger.log_info(f'black score: {b}, white score: {w}')
+        self.logger.log_info(f'reward: {self.get_reward(color)}')
         self.logger.log_board(self.board, self.BOARD_SIZE)
 
         coord_move = list(valid_moves)[-1]
