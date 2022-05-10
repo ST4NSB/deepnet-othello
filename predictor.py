@@ -144,7 +144,7 @@ class Predictor:
                 return (i, j)
             pred[0][max_index] = -1.0
 
-        return (-1, -1)
+        return self.predict_randomly(valid_moves)
 
     def predict_randomly(self, valid_moves):
         return random.choice(list(valid_moves))
