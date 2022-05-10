@@ -243,7 +243,7 @@ class GameGym:
 
         coord_move = list(valid_moves)[-1]
         if len(valid_moves) > 1:
-            coord_move = self.predictor.predict_randomly(valid_moves)
+            coord_move = self.predictor.predict_move(self.board_logic.board, valid_moves)
 
         encoded_move = Coder.encode_move(coord_move[0], coord_move[1])
 

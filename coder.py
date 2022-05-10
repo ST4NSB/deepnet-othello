@@ -49,6 +49,17 @@ class Coder:
         return k
 
     @staticmethod
+    def get_move_as_coordinates(nr, board_size = 8):
+        k = 0
+        for i in range(board_size):
+            for j in range(board_size):
+                if k == nr:
+                    return (i, j)
+                k += 1  
+                
+        return (-1, -1)
+
+    @staticmethod
     def decode_sequence(str):
         moves = []
         for i in range(0, len(str), 2):

@@ -12,11 +12,12 @@ from helpers import Helpers
 
 class Predictor:
 
-    def __init__(self, logger, epochs = 100, debug = False):
+    def __init__(self, logger, checkpoint, epochs = 100, debug = False):
         self.logger = logger
         self.debug = debug
-        self.model = None
         self.epochs = epochs
+        self.create_CNN_model()
+        self.model.load_weights(filepath=checkpoint)
 
     # CNN model
     def create_CNN_model(self, board_size = 8):
@@ -33,10 +34,9 @@ class Predictor:
         if self.debug:
             self.model.summary()
         self.model.compile(optimizer = "adam", loss = losses.SparseCategoricalCrossentropy(from_logits=True), metrics = ['acc'])
+        self.probability_model = keras.Sequential([self.model, tf.keras.layers.Softmax()])
 
     def train_model(self, color, location, checkpoint, max_loaded_matches = 5000, split_validation = 0.8):
-        self.create_CNN_model()
-
         data = Helpers.get_games_from_dataset(location)
         matches = []
         for item in data:
@@ -128,6 +128,23 @@ class Predictor:
         self.model.fit(train_data, train_labels, epochs=self.epochs, validation_data=(test_data, test_labels))  
         self.model.save_weights(filepath=checkpoint)
 
+
+    def predict_move(self, board, valid_moves, board_size = 8):
+        board_image = Coder.get_numpy_array_from_board(board)
+        board_image = board_image.reshape((1, board_size, board_size, 3))
+
+        pred = self.probability_model.predict(board_image)
+        while True:
+            max_index = np.argmax(pred[0])
+            if max_index == -1.0:
+                break
+
+            i, j = Coder.get_move_as_coordinates(max_index)
+            if (i, j) in valid_moves:
+                return (i, j)
+            pred[0][max_index] = -1.0
+
+        return (-1, -1)
 
     def predict_randomly(self, valid_moves):
         return random.choice(list(valid_moves))
