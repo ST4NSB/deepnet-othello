@@ -9,33 +9,33 @@ from agent import Agent
 
 if __name__ == "__main__":
     logger = Logger()
-    predictor = Predictor()
+    predictor = Predictor(logger, debug=config.settings['showDebug'])
     agent = 0 #Agent(gamma=0.9, states=[], policy=None, randomFactor=0.2)
     
-    #predictor.train_model(config.settings['color'], config.settings['dataset_location'])
+    predictor.train_model(config.settings['color'], config.settings['dataset_location'], config.settings['checkpoint_location'])
 
-    wins = 0
-    acc = 0
-    total_reward_history = []
-    win_history = []
+    # wins = 0
+    # acc = 0
+    # total_reward_history = []
+    # win_history = []
     
-    for nr in range(config.settings['number_of_games']):
-        env = GameGym(logger, predictor, agent, debug=config.settings['showDebug'])
-        seq, winner, reward_history = env.init_game(config.settings['color'], config.settings['bot_level'])
-        total_reward_history.extend((reward_history))
+    # for nr in range(config.settings['number_of_games']):
+    #     env = GameGym(logger, predictor, agent, debug=config.settings['showDebug'])
+    #     seq, winner, reward_history = env.init_game(config.settings['color'], config.settings['bot_level'])
+    #     total_reward_history.extend((reward_history))
 
-        logger.log_info(f"Game {nr+1} done!")
-        logger.log_info(f"Winner is: {winner}, Game sequence: {seq}")
+    #     logger.log_info(f"Game {nr+1} done!")
+    #     logger.log_info(f"Winner is: {winner}, Game sequence: {seq}")
         
-        if winner == config.settings['color']:
-            wins += 1
-        win_history.append(wins)
+    #     if winner == config.settings['color']:
+    #         wins += 1
+    #     win_history.append(wins)
 
-    # plt.plot(total_reward_history)
-    # plt.show()
+    # # plt.plot(total_reward_history)
+    # # plt.show()
 
-    # plt.plot(win_history)
-    # plt.show()
+    # # plt.plot(win_history)
+    # # plt.show()
 
-    acc = wins / config.settings['number_of_games']
-    logger.log_info(f'Accuracy: {acc}')
+    # acc = wins / config.settings['number_of_games']
+    # logger.log_info(f'Accuracy: {acc}')

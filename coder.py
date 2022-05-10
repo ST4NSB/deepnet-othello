@@ -54,4 +54,10 @@ class Coder:
         for i in range(0, len(str), 2):
             moves.append(Coder.decode_move(str[i:i+2]))
         return moves
-        
+
+    @staticmethod
+    def get_sequence(str):
+        moves = []
+        for i in range(0, len(str), 2):
+            moves.append((str[i:i+2]))
+        return moves
