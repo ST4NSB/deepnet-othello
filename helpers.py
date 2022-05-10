@@ -1,4 +1,5 @@
 import re
+import csv
 
 class Helpers:
 
@@ -18,3 +19,12 @@ class Helpers:
         for item in move_list:
             seq += item
         return seq
+
+    @staticmethod
+    def get_games_from_dataset(location):
+        rows = []
+        with open(location, 'r') as file:
+            reader = csv.reader(file)
+            for r in reader:
+                rows.append(r)
+        return rows

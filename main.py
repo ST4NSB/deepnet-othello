@@ -1,4 +1,6 @@
+from coder import Coder
 from gamegym import GameGym
+from helpers import Helpers
 from logger import Logger
 import config
 from predictor import Predictor
@@ -10,6 +12,8 @@ if __name__ == "__main__":
     predictor = Predictor()
     agent = 0 #Agent(gamma=0.9, states=[], policy=None, randomFactor=0.2)
     
+    #predictor.train_model(config.settings['color'], config.settings['dataset_location'])
+
     wins = 0
     acc = 0
     total_reward_history = []
@@ -27,11 +31,11 @@ if __name__ == "__main__":
             wins += 1
         win_history.append(wins)
 
-    plt.plot(total_reward_history)
-    plt.show()
+    # plt.plot(total_reward_history)
+    # plt.show()
 
-    plt.plot(win_history)
-    plt.show()
+    # plt.plot(win_history)
+    # plt.show()
 
     acc = wins / config.settings['number_of_games']
     logger.log_info(f'Accuracy: {acc}')

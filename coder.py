@@ -1,3 +1,5 @@
+import numpy as np
+
 # class for encoding & decoding othello table
 # 1 for black, -1 for white, 0 for none
 class Coder:
@@ -11,6 +13,19 @@ class Coder:
             return '.'
 
     @staticmethod
+    def get_numpy_array_from_board(board, board_size = 8):
+        arr = np.zeros(shape=(board_size, board_size, 3), dtype=float, order='F')
+
+        for i in range(board_size):
+            for j in range(board_size):
+                if board[i][j] == Coder.encode_game_string('black'):
+                    arr[i][j] = [0., 0., 1.]
+                elif board[i][j] == Coder.encode_game_string('white'):
+                    arr[i][j] = [1., 0., 0.]
+
+        return arr
+
+    @staticmethod
     def encode_move(i, j):
         move = str(chr(97 + j))
         move += str(i + 1)
@@ -21,6 +36,17 @@ class Coder:
         j = ord(str[0]) - 97
         i = int(str[1]) - 1
         return (i, j)
+
+    @staticmethod
+    def get_move_as_numpy(i, j, board_size = 8):
+        k = np.array([0])
+        for m in range(board_size):
+            for n in range(board_size):
+                if i == m and j == n:
+                    return k
+                k[0] += 1
+
+        return k
 
     @staticmethod
     def decode_sequence(str):
