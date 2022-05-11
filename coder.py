@@ -13,7 +13,7 @@ class Coder:
             return '.'
 
     @staticmethod
-    def get_numpy_array_from_board(board, board_size = 8):
+    def get_numpy_array_from_board(board, scale_up_board = 4, board_size = 8):
         arr = np.zeros(shape=(board_size, board_size, 3), dtype=float, order='F')
 
         for i in range(board_size):
@@ -23,6 +23,7 @@ class Coder:
                 elif board[i][j] == Coder.encode_game_string('white'):
                     arr[i][j] = [1., 0., 0.]
 
+        arr = arr.repeat(scale_up_board,axis=0).repeat(scale_up_board,axis=1) # this scales board up by $scale_up_board
         return arr
 
     @staticmethod

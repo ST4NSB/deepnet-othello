@@ -1,8 +1,9 @@
 settings = dict(
-    number_of_games = 10,
+    number_of_games = 5,
     color = 'black', # black or white
     bot_level = 1, # 1 or 2,
-    showDebug=False,
+    showDebug=True,
     dataset_location='othello_dataset.csv',
-    checkpoint_location='checkpoints\\model_weights.h5'
+    checkpoint_location='checkpoints\\model_weights.h5',
+    load_model=True
 )

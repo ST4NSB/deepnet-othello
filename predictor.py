@@ -1,7 +1,7 @@
 import random
 from soupsieve import match
 from tensorflow import keras
-from tensorflow.keras import layers, models, losses
+from tensorflow.keras import layers, models, losses, Model
 import tensorflow as tf
 import numpy as np
 from boardlogic import BoardLogic
@@ -12,31 +12,51 @@ from helpers import Helpers
 
 class Predictor:
 
-    def __init__(self, logger, checkpoint, epochs = 100, debug = False):
+    def __init__(self, logger, color, location, checkpoint, load_model = True, batch_size = 32, epochs = 10, debug = False):
         self.logger = logger
         self.debug = debug
         self.epochs = epochs
+        self.batch_size = batch_size
         self.create_CNN_model()
-        self.model.load_weights(filepath=checkpoint)
+        if load_model:
+            self.model.load_weights(filepath=checkpoint)
+        else:
+            self.train_model(color, location, checkpoint)
 
     # CNN model
-    def create_CNN_model(self, board_size = 8):
+    def create_CNN_model(self, scaled_board_size = 32, board_size = 8):
         self.model = models.Sequential()
-        self.model.add(layers.Conv2D(filters=64, kernel_size=(2,2), activation = "relu", input_shape=(board_size, board_size, 3)))
-        self.model.add(layers.MaxPooling2D(pool_size=(2,2), strides=(2,2)))
-        self.model.add(layers.Conv2D(filters=128, kernel_size=(2,2), activation = "relu"))
-        self.model.add(layers.MaxPooling2D(pool_size=(2,2), strides=(4,4), padding='valid'))
+        self.model.add(layers.Conv2D(filters=64, kernel_size=(3,3), activation = "relu", input_shape=(scaled_board_size, scaled_board_size, 3)))
+        self.model.add(layers.MaxPooling2D(pool_size=(2,2)))
+        self.model.add(layers.Conv2D(filters=128, kernel_size=(3,3), activation = "relu"))
+        self.model.add(layers.MaxPooling2D(pool_size=(2,2)))
+        self.model.add(layers.Conv2D(filters=128, kernel_size=(3,3), activation = "relu"))
+        self.model.add(layers.MaxPooling2D(pool_size=(2,2)))
         self.model.add(layers.Flatten())
         self.model.add(layers.Dense(128, activation = "relu"))
-        self.model.add(layers.Dropout(0.4))
+        self.model.add(layers.Dropout(0.45))
         self.model.add(layers.Dense(60, activation = "relu"))
         self.model.add(layers.Dense(board_size * board_size))
         if self.debug:
             self.model.summary()
-        self.model.compile(optimizer = "adam", loss = losses.SparseCategoricalCrossentropy(from_logits=True), metrics = ['acc'])
+        self.model.compile(optimizer = "rmsprop", loss = losses.SparseCategoricalCrossentropy(from_logits=True), metrics = ['acc'])
         self.probability_model = keras.Sequential([self.model, tf.keras.layers.Softmax()])
 
-    def train_model(self, color, location, checkpoint, max_loaded_matches = 5000, split_validation = 0.8):
+    def create_ResNet_model(self, scaled_board_size = 32, board_size = 8):
+        base_model = tf.keras.applications.ResNet152(weights = 'imagenet', include_top = False, input_shape = (scaled_board_size, scaled_board_size, 3))
+        # for layer in base_model.layers:
+            # layer.trainable = False
+
+        x = layers.Flatten()(base_model.output)
+        x = layers.Dense(128, activation='relu')(x)
+        predictions = layers.Dense(board_size * board_size, activation = 'softmax')(x)
+        self.model = Model(inputs = base_model.input, outputs = predictions)
+        if self.debug:
+            self.model.summary()
+        self.model.compile(optimizer='adam', loss=losses.sparse_categorical_crossentropy, metrics=['accuracy'])
+        self.probability_model = keras.Sequential([self.model, tf.keras.layers.Softmax()])
+
+    def train_model(self, color, location, checkpoint, max_loaded_matches = 100, split_validation = 0.8):
         data = Helpers.get_games_from_dataset(location)
         matches = []
         for item in data:
@@ -125,13 +145,13 @@ class Predictor:
         if self.debug: 
             self.logger.log_info(f'Loaded: {len(train_data)}, {len(train_labels)}, {len(test_data)}, {len(test_labels)},')
 
-        self.model.fit(train_data, train_labels, epochs=self.epochs, validation_data=(test_data, test_labels))  
+        self.model.fit(train_data, train_labels, batch_size=self.batch_size ,epochs=self.epochs, validation_data=(test_data, test_labels))  
         self.model.save_weights(filepath=checkpoint)
 
 
-    def predict_move(self, board, valid_moves, board_size = 8):
+    def predict_move(self, board, valid_moves, scaled_board_size = 32, board_size = 8):
         board_image = Coder.get_numpy_array_from_board(board)
-        board_image = board_image.reshape((1, board_size, board_size, 3))
+        board_image = board_image.reshape((1, scaled_board_size, scaled_board_size, 3))
 
         pred = self.probability_model.predict(board_image)
         while True:

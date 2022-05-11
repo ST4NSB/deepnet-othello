@@ -10,12 +10,11 @@ import matplotlib.pyplot as plt
 
 # creates the game interface on www.othello.com
 class GameGym:
-    def __init__(self, logger, predictor, agent, debug = False):
+    def __init__(self, logger, predictor, debug = False):
         load_dotenv()
         self.__cookie = os.getenv('COOKIE')
         self.logger = logger
         self.predictor = predictor
-        self.agent = agent
         self.debug = debug
 
     def init_game(self, color, bot_level):

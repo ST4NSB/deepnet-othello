@@ -9,18 +9,16 @@ from agent import Agent
 
 if __name__ == "__main__":
     logger = Logger()
-    predictor = Predictor(logger, checkpoint=config.settings['checkpoint_location'], debug=config.settings['showDebug'])
-    agent = 0 #Agent(gamma=0.9, states=[], policy=None, randomFactor=0.2)
-    
-    #predictor.train_model(config.settings['color'], config.settings['dataset_location'], config.settings['checkpoint_location'])
+    predictor = Predictor(logger, color=config.settings['color'], location=config.settings['dataset_location'], checkpoint=config.settings['checkpoint_location'], load_model=config.settings['load_model'], debug=config.settings['showDebug'])
 
     wins = 0
+    draws = 0
     acc = 0
     total_reward_history = []
     win_history = []
     
     for nr in range(config.settings['number_of_games']):
-        env = GameGym(logger, predictor, agent, debug=config.settings['showDebug'])
+        env = GameGym(logger, predictor, debug=config.settings['showDebug'])
         seq, winner, reward_history = env.init_game(config.settings['color'], config.settings['bot_level'])
         total_reward_history.extend((reward_history))
 
@@ -29,6 +27,8 @@ if __name__ == "__main__":
         
         if winner == config.settings['color']:
             wins += 1
+        elif winner != 'black' and winner != 'white':
+            draws += 1
         win_history.append(wins)
 
     # plt.plot(total_reward_history)
@@ -37,5 +37,6 @@ if __name__ == "__main__":
     # plt.plot(win_history)
     # plt.show()
 
-    acc = wins / config.settings['number_of_games']
-    logger.log_info(f'Accuracy: {acc}')
+    games = config.settings['number_of_games']
+    losses = games - wins - draws
+    logger.log_info(f'Number of games: {games}, wins: {wins}, draws: {draws}, losses: {losses}')
