@@ -1,5 +1,9 @@
 import re
 import csv
+from shutil import move
+import xml.etree.ElementTree as ET
+
+from regex import W
 
 class Helpers:
 
@@ -27,4 +31,25 @@ class Helpers:
             reader = csv.reader(file)
             for r in reader:
                 rows.append(r)
+        return rows
+
+    @staticmethod
+    def normalize(value, min, max):
+        return (value - min) / (max - min)
+
+    @staticmethod
+    def get_games_from_xml(xml_location):
+        tree = ET.parse(xml_location)
+        root = tree.getroot()
+        rows = []
+        for game in root[1].getchildren():
+            winner_color =  game[1].attrib['winner']
+            winner = '0'
+            if winner_color == 'black':
+                winner = '1'
+            elif winner_color == 'white':
+                winner = '-1'
+            moves = game[4].text
+            rows.append(["", winner, moves])
+
         return rows

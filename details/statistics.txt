@@ -1,2 +1,8 @@
 Epoch 100/100
 3872/3872 [==============================] - 13s 3ms/step - loss: 2.2967 - acc: 0.3456 - val_loss: 2.4176 - val_acc: 0.3259
+
+
+
+
+
+[INFO]: Number of games: 20, wins: 2, draws: 2, losses: 16

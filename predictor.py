@@ -12,7 +12,7 @@ from helpers import Helpers
 
 class Predictor:
 
-    def __init__(self, logger, color, location, checkpoint, load_model = True, batch_size = 32, epochs = 10, debug = False):
+    def __init__(self, logger, color, location, checkpoint, load_model = True, batch_size = 64, epochs = 10, debug = False):
         self.logger = logger
         self.debug = debug
         self.epochs = epochs
@@ -34,7 +34,7 @@ class Predictor:
         self.model.add(layers.MaxPooling2D(pool_size=(2,2)))
         self.model.add(layers.Flatten())
         self.model.add(layers.Dense(128, activation = "relu"))
-        self.model.add(layers.Dropout(0.45))
+        self.model.add(layers.Dropout(0.5))
         self.model.add(layers.Dense(60, activation = "relu"))
         self.model.add(layers.Dense(board_size * board_size))
         if self.debug:
@@ -56,8 +56,8 @@ class Predictor:
         self.model.compile(optimizer='adam', loss=losses.sparse_categorical_crossentropy, metrics=['accuracy'])
         self.probability_model = keras.Sequential([self.model, tf.keras.layers.Softmax()])
 
-    def train_model(self, color, location, checkpoint, max_loaded_matches = 100, split_validation = 0.8):
-        data = Helpers.get_games_from_dataset(location)
+    def train_model(self, color, location, checkpoint, max_loaded_matches = 5000, split_validation = 0.8):
+        data = Helpers.get_games_from_xml(location)
         matches = []
         for item in data:
             # item[1] is winner, item[2] is game moves
@@ -69,6 +69,11 @@ class Predictor:
         train_labels = []
         test_data = []
         test_labels = []
+
+        register_after_move = 27
+
+        max_loaded_matches = len(matches) if len(matches) < max_loaded_matches else max_loaded_matches
+        self.logger.log_info(f'total matches: {max_loaded_matches}')
 
         split_validation_count = int(split_validation * max_loaded_matches)
         for i in range(0, split_validation_count):
@@ -82,21 +87,23 @@ class Predictor:
 
                 if color_turn % 2 == 0:
                     if (color == 'black' and total_valid_moves_black > 0) or (color == 'white' and total_valid_moves_white > 0 and total_valid_moves_black == 0):
-                        arr = Coder.get_numpy_array_from_board(board_logic.board)
-                        train_data.append(arr)
-                        i, j = Coder.decode_move(move)
-                        move_index = Coder.get_move_as_numpy(i, j)
-                        train_labels.append(move_index) 
+                        if color_turn >= register_after_move:
+                            arr = Coder.get_numpy_array_from_board(board_logic.board)
+                            train_data.append(arr)
+                            i, j = Coder.decode_move(move)
+                            move_index = Coder.get_move_as_numpy(i, j)
+                            train_labels.append(move_index) 
                     
                     if (total_valid_moves_black > 0):
                         color_turn += 1
                 else:
                     if (color == 'white' and total_valid_moves_white > 0) or (color == 'black' and total_valid_moves_black > 0 and total_valid_moves_white == 0):
-                        arr = Coder.get_numpy_array_from_board(board_logic.board)
-                        train_data.append(arr)
-                        i, j = Coder.decode_move(move)
-                        move_index = Coder.get_move_as_numpy(i, j)
-                        train_labels.append(move_index) 
+                        if color_turn >= register_after_move:
+                            arr = Coder.get_numpy_array_from_board(board_logic.board)
+                            train_data.append(arr)
+                            i, j = Coder.decode_move(move)
+                            move_index = Coder.get_move_as_numpy(i, j)
+                            train_labels.append(move_index) 
                     
                     if (total_valid_moves_white > 0):
                         color_turn += 1    
@@ -115,21 +122,23 @@ class Predictor:
 
                 if color_turn % 2 == 0:
                     if (color == 'black' and total_valid_moves_black > 0) or (color == 'white' and total_valid_moves_white > 0 and total_valid_moves_black == 0):
-                        arr = Coder.get_numpy_array_from_board(board_logic.board)
-                        test_data.append(arr)
-                        i, j = Coder.decode_move(move)
-                        move_index = Coder.get_move_as_numpy(i, j)
-                        test_labels.append(move_index) 
+                        if color_turn >= register_after_move:
+                            arr = Coder.get_numpy_array_from_board(board_logic.board)
+                            test_data.append(arr)
+                            i, j = Coder.decode_move(move)
+                            move_index = Coder.get_move_as_numpy(i, j)
+                            test_labels.append(move_index) 
                     
                     if (total_valid_moves_black > 0):
                         color_turn += 1
                 else:
                     if (color == 'white' and total_valid_moves_white > 0) or (color == 'black' and total_valid_moves_black > 0 and total_valid_moves_white == 0):
-                        arr = Coder.get_numpy_array_from_board(board_logic.board)
-                        test_data.append(arr)
-                        i, j = Coder.decode_move(move)
-                        move_index = Coder.get_move_as_numpy(i, j)
-                        test_labels.append(move_index) 
+                        if color_turn >= register_after_move:
+                            arr = Coder.get_numpy_array_from_board(board_logic.board)
+                            test_data.append(arr)
+                            i, j = Coder.decode_move(move)
+                            move_index = Coder.get_move_as_numpy(i, j)
+                            test_labels.append(move_index) 
                     
                     if (total_valid_moves_white > 0):
                         color_turn += 1    
@@ -152,19 +161,23 @@ class Predictor:
     def predict_move(self, board, valid_moves, scaled_board_size = 32, board_size = 8):
         board_image = Coder.get_numpy_array_from_board(board)
         board_image = board_image.reshape((1, scaled_board_size, scaled_board_size, 3))
+        board_predefined_weights = [100, -25, 10, 5, 5, 10, -25, -100,-25,-25,2,2,2,2,-25,-25,10,2,5,1,1,5,2,10,5,2,1,2,2,1,2,5,5,2,1,2,2,1,2,5,10,2,5,1,1,5,2,10,-25,-25,2,2,2,2,-25,-25,100,-25,10,5,5,10,-25,100]
 
         pred = self.probability_model.predict(board_image)
-        while True:
-            max_index = np.argmax(pred[0])
-            if max_index == -1.0:
-                break
+        max_value_predefined_board = 100
+        min_value_predefined_board = -100
+        best_move = [(-1, -1), -1] # index, probability of move
+        
+        for i, j in valid_moves:
+            move_index = Coder.get_move_as_numpy(i, j)[0]
+            normalized_predefined_move = Helpers.normalize(board_predefined_weights[move_index], min_value_predefined_board, max_value_predefined_board)
+            pred_value = pred[0][move_index]
+            actual_value = (pred_value * 0.4) * (normalized_predefined_move * 0.6)
+            if actual_value > best_move[1]:
+                best_move[0] = (i, j)
+                best_move[1] = actual_value
 
-            i, j = Coder.get_move_as_coordinates(max_index)
-            if (i, j) in valid_moves:
-                return (i, j)
-            pred[0][max_index] = -1.0
-
-        return self.predict_randomly(valid_moves)
+        return best_move[0]
 
     def predict_randomly(self, valid_moves):
         return random.choice(list(valid_moves))
