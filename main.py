@@ -9,7 +9,12 @@ import matplotlib.pyplot as plt
 
 if __name__ == "__main__":
     logger = Logger()    
-    predictor = Predictor(logger, color=config.settings['color'], location=config.settings['xml_location'], checkpoint=config.settings['checkpoint_location'], load_model=config.settings['load_model'], debug=config.settings['showDebug'])
+    predictor = Predictor(logger, 
+                          color=config.settings['color'], 
+                          location=config.settings['dataset_location'],
+                          checkpoint=config.settings['checkpoint_location'], 
+                          load_model=config.settings['load_model'], 
+                          debug=config.settings['showDebug'])
 
     wins = 0
     draws = 0

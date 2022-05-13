@@ -12,7 +12,7 @@ from helpers import Helpers
 
 class Predictor:
 
-    def __init__(self, logger, color, location, checkpoint, load_model = True, batch_size = 64, epochs = 10, debug = False):
+    def __init__(self, logger, color, location, checkpoint, load_model = True, batch_size = 32, epochs = 10, debug = False):
         self.logger = logger
         self.debug = debug
         self.epochs = epochs
@@ -57,7 +57,7 @@ class Predictor:
         self.probability_model = keras.Sequential([self.model, tf.keras.layers.Softmax()])
 
     def train_model(self, color, location, checkpoint, max_loaded_matches = 5000, split_validation = 0.8):
-        data = Helpers.get_games_from_xml(location)
+        data = Helpers.get_games_from_dataset(location)
         matches = []
         for item in data:
             # item[1] is winner, item[2] is game moves
@@ -70,7 +70,7 @@ class Predictor:
         test_data = []
         test_labels = []
 
-        register_after_move = 27
+        register_after_move = 0
 
         max_loaded_matches = len(matches) if len(matches) < max_loaded_matches else max_loaded_matches
         self.logger.log_info(f'total matches: {max_loaded_matches}')

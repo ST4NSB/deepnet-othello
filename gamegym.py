@@ -25,13 +25,14 @@ class GameGym:
         game_id = self.create_game_id(color, bot_level)
 
         # game logic
-        turn, moves, winner = self.get_game_details(game_id)
+        turn, moves, winner = self.get_game_details(game_id, look_for_moves=False)
         self.board_logic.sequence = Helpers.convert_list_moves_to_string_moves(moves)
         self.board_logic.move_sequence_to_board()
         while turn != 'finished':
-            self.calculate_move(game_id, color, turn)
+            encoded_move = self.calculate_move(game_id, color, turn)
+            turn, moves, winner = self.get_game_details(game_id, look_for_moves=True)
 
-            turn, moves, winner = self.get_game_details(game_id)
+            self.board_logic.sequence += encoded_move
             new_sequence = Helpers.convert_list_moves_to_string_moves(moves)
             if len(new_sequence) >= len(self.board_logic.sequence):
                 self.board_logic.sequence = new_sequence
@@ -81,7 +82,7 @@ class GameGym:
         encoded_move = Coder.encode_move(coord_move[0], coord_move[1])
 
         self.make_move(game_id, encoded_move)
-        self.board_logic.sequence += encoded_move
+        return encoded_move
         # self.board_logic.move_index += 1
         # self.board_logic.move_sequence_to_board()
 
@@ -120,7 +121,7 @@ class GameGym:
             self.logger.log_info(f'{game_id}, {type(game_id)}')
         return game_id
 
-    def get_game_details(self, game_id):
+    def get_game_details(self, game_id, look_for_moves):
         url = "https://www.eothello.com/get-game-updates"
 
         payload = f"game_id={game_id}&last_board_moves={self.board_logic.sequence}&last_chat_message_id=-1"
@@ -146,6 +147,8 @@ class GameGym:
 
         response = requests.request("POST", url, headers=headers, data=payload)
         result = json.loads(json.loads(response.text)['content'])
+        if 'moves' not in result and look_for_moves:
+            raise ValueError('moves is not found in result.')
         return (result['turn'], [] if 'moves' not in result else result['moves'], result['winner'])
 
     def make_move(self, game_id, move):

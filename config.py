@@ -1,6 +1,6 @@
 settings = dict(
-    number_of_games = 5,
-    load_model=True,
+    number_of_games = 10,
+    load_model=False,
     color = 'black', # black or white
     bot_level = 1, # 1 or 2,
     showDebug=True,
