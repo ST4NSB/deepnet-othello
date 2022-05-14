@@ -1,4 +1,5 @@
 import random
+import sys
 from soupsieve import match
 from tensorflow import keras
 from tensorflow.keras import layers, models, losses, Model
@@ -7,39 +8,56 @@ import numpy as np
 from boardlogic import BoardLogic
 from coder import Coder
 import matplotlib.pyplot as plt
+import math
 
 from helpers import Helpers
 
 class Predictor:
 
-    def __init__(self, logger, color, location, checkpoint, load_model = True, batch_size = 32, epochs = 10, debug = False):
+    def __init__(self, logger, 
+                       color, 
+                       location, 
+                       checkpoint, 
+                       max_loaded_matches,
+                       split_validation,
+                       model_type,
+                       load_model, 
+                       batch_size, 
+                       epochs, 
+                       debug = False):
         self.logger = logger
         self.debug = debug
         self.epochs = epochs
         self.batch_size = batch_size
-        self.create_CNN_model()
+        self.create_model(model_type)
         if load_model:
             self.model.load_weights(filepath=checkpoint)
         else:
-            self.train_model(color, location, checkpoint)
+            self.train_model(color, location, checkpoint, max_loaded_matches=max_loaded_matches, split_validation=split_validation)
+
+    def create_model(self, model_type):
+        if model_type == 'cnn':
+            self.create_CNN_model()
+        elif model_type == 'resnet':
+            self.create_ResNet_model()
 
     # CNN model
     def create_CNN_model(self, scaled_board_size = 32, board_size = 8):
         self.model = models.Sequential()
-        self.model.add(layers.Conv2D(filters=64, kernel_size=(3,3), activation = "relu", input_shape=(scaled_board_size, scaled_board_size, 3)))
-        self.model.add(layers.MaxPooling2D(pool_size=(2,2)))
-        self.model.add(layers.Conv2D(filters=128, kernel_size=(3,3), activation = "relu"))
-        self.model.add(layers.MaxPooling2D(pool_size=(2,2)))
-        self.model.add(layers.Conv2D(filters=128, kernel_size=(3,3), activation = "relu"))
-        self.model.add(layers.MaxPooling2D(pool_size=(2,2)))
+        self.model.add(layers.Conv2D(filters=32, padding='same', kernel_size=(3,3), activation = "relu", input_shape=(scaled_board_size, scaled_board_size, 3)))
+        self.model.add(layers.MaxPooling2D(pool_size=(2,2), padding='same'))
+        self.model.add(layers.Conv2D(filters=64, padding='same', kernel_size=(3,3), activation = "relu"))
+        self.model.add(layers.MaxPooling2D(pool_size=(2,2), padding='same'))
+        self.model.add(layers.Conv2D(filters=64, padding='same', kernel_size=(3,3), activation = "relu"))
+        self.model.add(layers.MaxPooling2D(pool_size=(2,2), padding='same'))
         self.model.add(layers.Flatten())
         self.model.add(layers.Dense(128, activation = "relu"))
-        self.model.add(layers.Dropout(0.5))
-        self.model.add(layers.Dense(60, activation = "relu"))
+        self.model.add(layers.Dropout(0.4))
+        self.model.add(layers.Dense(64, activation = "relu"))
         self.model.add(layers.Dense(board_size * board_size))
         if self.debug:
             self.model.summary()
-        self.model.compile(optimizer = "rmsprop", loss = losses.SparseCategoricalCrossentropy(from_logits=True), metrics = ['acc'])
+        self.model.compile(optimizer = "adam", loss = losses.SparseCategoricalCrossentropy(from_logits=True), metrics = ['acc'])
         self.probability_model = keras.Sequential([self.model, tf.keras.layers.Softmax()])
 
     def create_ResNet_model(self, scaled_board_size = 32, board_size = 8):
@@ -56,7 +74,7 @@ class Predictor:
         self.model.compile(optimizer='adam', loss=losses.sparse_categorical_crossentropy, metrics=['accuracy'])
         self.probability_model = keras.Sequential([self.model, tf.keras.layers.Softmax()])
 
-    def train_model(self, color, location, checkpoint, max_loaded_matches = 5000, split_validation = 0.8):
+    def train_model(self, color, location, checkpoint, max_loaded_matches, split_validation):
         data = Helpers.get_games_from_dataset(location)
         matches = []
         for item in data:
@@ -158,21 +176,22 @@ class Predictor:
         self.model.save_weights(filepath=checkpoint)
 
 
-    def predict_move(self, board, valid_moves, scaled_board_size = 32, board_size = 8):
+    def predict_move(self, board, valid_moves, scaled_board_size = 32):
         board_image = Coder.get_numpy_array_from_board(board)
         board_image = board_image.reshape((1, scaled_board_size, scaled_board_size, 3))
-        board_predefined_weights = [100, -25, 10, 5, 5, 10, -25, -100,-25,-25,2,2,2,2,-25,-25,10,2,5,1,1,5,2,10,5,2,1,2,2,1,2,5,5,2,1,2,2,1,2,5,10,2,5,1,1,5,2,10,-25,-25,2,2,2,2,-25,-25,100,-25,10,5,5,10,-25,100]
+        board_heur = [100, -25, 10, 5, 5, 10, -25, 100,-25,-25,2,2,2,2,-25,-25,10,2,5,1,1,5,2,10,5,2,1,2,2,1,2,5,5,2,1,2,2,1,2,5,10,2,5,1,1,5,2,10,-25,-25,2,2,2,2,-25,-25,100,-25,10,5,5,10,-25,100]
+        board_bench = [80, -26,24,-1,-5,28,-18,76,-23,-39,-18,-9,-6,-8,-39,-1,46,-16,4,1,-3,6,-20,52,-13,-5,2,-1,4,3,-12,-2,-5,-6,1,-2,-3,0,-9,-5,48,-13,12,5,0,5,-24,41,-27,-53,-11,-1,-11,-16,-58,-15,87,-25,27,-1,5,36,-3,100]
 
         pred = self.probability_model.predict(board_image)
-        max_value_predefined_board = 100
-        min_value_predefined_board = -100
-        best_move = [(-1, -1), -1] # index, probability of move
+        best_move = [(-1, -1), float('-inf')] # index, probability of move
         
         for i, j in valid_moves:
             move_index = Coder.get_move_as_numpy(i, j)[0]
-            normalized_predefined_move = Helpers.normalize(board_predefined_weights[move_index], min_value_predefined_board, max_value_predefined_board)
+            normalized_heur_move = Helpers.normalize(board_heur[move_index], -25, 100)
+            normalized_bench_move = Helpers.normalize(board_bench[move_index], -58, 100)
+            
             pred_value = pred[0][move_index]
-            actual_value = (pred_value * 0.4) * (normalized_predefined_move * 0.6)
+            actual_value = math.log((pred_value * 0.4)) + math.log((normalized_heur_move * 0.25)) + math.log((normalized_bench_move * 0.35))
             if actual_value > best_move[1]:
                 best_move[0] = (i, j)
                 best_move[1] = actual_value

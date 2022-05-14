@@ -35,7 +35,8 @@ class Helpers:
 
     @staticmethod
     def normalize(value, min, max):
-        return (value - min) / (max - min)
+        res = (value - min) / (max - min)
+        return res if res > 0.0 else 0.0000000000000001
 
     @staticmethod
     def get_games_from_xml(xml_location):
@@ -53,3 +54,10 @@ class Helpers:
             rows.append(["", winner, moves])
 
         return rows
+
+    @staticmethod
+    def save_csv(arr, location):
+        with open(location, 'w', newline='') as f:
+            write = csv.writer(f)
+            write.writerow(['id', 'winner', 'game_moves'])
+            write.writerows(arr)
