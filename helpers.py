@@ -1,3 +1,4 @@
+import random
 import re
 import csv
 from shutil import move
@@ -29,6 +30,7 @@ class Helpers:
             reader = csv.reader(file)
             for r in reader:
                 rows.append(r)
+        random.shuffle(rows)
         return rows
 
     @staticmethod

@@ -1,6 +1,4 @@
 import random
-from soupsieve import match
-from tensorflow import keras
 from tensorflow.keras import layers, models, losses, Model
 import tensorflow as tf
 import numpy as np
@@ -8,6 +6,12 @@ from boardlogic import BoardLogic
 from coder import Coder
 import matplotlib.pyplot as plt
 import math
+
+from tensorflow import keras
+from keras.models import Sequential
+from keras.layers import Dense, Dropout, Flatten
+from keras.layers import Conv2D, MaxPooling2D, BatchNormalization, Softmax
+from keras.applications.vgg19 import VGG19
 
 from helpers import Helpers
 
@@ -35,13 +39,21 @@ class Predictor:
             self.train_model(color, location, checkpoint, max_loaded_matches=max_loaded_matches, split_validation=split_validation)
 
     def create_model(self, model_type):
-        if model_type == 'cnn':
-            self.create_CNN_model()
-        elif model_type == 'resnet':
-            self.create_ResNet_model()
+        scaled_board = 32
+        board_size = 8
 
-    # CNN model
-    def create_CNN_model(self, scaled_board_size = 32, board_size = 8):
+        if model_type == 'cnn2':
+            self.create_CNN_model2(scaled_board_size=scaled_board, board_size=board_size)
+        elif model_type == 'cnn3':
+            self.create_CNN_model3(scaled_board_size=scaled_board, board_size=board_size)
+        elif model_type == 'resnet':
+            self.create_ResNet_model(scaled_board_size=scaled_board, board_size=board_size)
+        elif model_type == '4conv':
+            self.create_4conv_cnn(scaled_board_size=scaled_board, board_size=board_size)
+        elif model_type == 'vgg19':
+            self.create_VGG19_model(scaled_board_size=scaled_board, board_size=board_size)
+
+    def create_CNN_model2(self, scaled_board_size = 32, board_size = 8):
         self.model = models.Sequential()
         self.model.add(layers.Conv2D(filters=32, padding='same', kernel_size=(3,3), activation = "relu", input_shape=(scaled_board_size, scaled_board_size, 3)))
         self.model.add(layers.MaxPooling2D(pool_size=(2,2), padding='same'))
@@ -59,6 +71,62 @@ class Predictor:
         self.model.compile(optimizer = "adam", loss = losses.SparseCategoricalCrossentropy(from_logits=True), metrics = ['acc'])
         self.probability_model = keras.Sequential([self.model, tf.keras.layers.Softmax()])
 
+    def create_CNN_model3(self, scaled_board_size = 32, board_size = 8):
+        self.model = models.Sequential()
+        self.model.add(layers.Conv2D(filters=32, padding='same', kernel_size=(3,3), activation = "relu", input_shape=(scaled_board_size, scaled_board_size, 3)))
+        self.model.add(layers.MaxPooling2D(pool_size=(3,3), padding='same'))
+        self.model.add(layers.Conv2D(filters=64, padding='same', kernel_size=(3,3), activation = "relu"))
+        self.model.add(layers.MaxPooling2D(pool_size=(3,3), padding='same'))
+        self.model.add(layers.Conv2D(filters=64, padding='same', kernel_size=(3,3), activation = "relu"))
+        self.model.add(layers.MaxPooling2D(pool_size=(3,3), padding='same'))
+        self.model.add(layers.Flatten())
+        self.model.add(layers.Dense(128, activation = "relu"))
+        self.model.add(layers.Dropout(0.4))
+        self.model.add(layers.Dense(64, activation = "relu"))
+        self.model.add(layers.Dense(board_size * board_size))
+        if self.debug:
+            self.model.summary()
+        self.model.compile(optimizer = "adam", loss = losses.SparseCategoricalCrossentropy(from_logits=True), metrics = ['acc'])
+        self.probability_model = keras.Sequential([self.model, tf.keras.layers.Softmax()])
+
+    def create_4conv_cnn(self, scaled_board_size = 32, board_size = 8):
+        self.model= Sequential()
+        self.model.add(Conv2D(32, kernel_size=(3, 3), padding='same', activation='relu', input_shape=(scaled_board_size, scaled_board_size, 3)))
+        self.model.add(BatchNormalization())
+
+        self.model.add(Conv2D(32, kernel_size=(3, 3), padding='same', activation='relu'))
+        self.model.add(BatchNormalization())
+        self.model.add(MaxPooling2D(pool_size=(2, 2)))
+        self.model.add(Dropout(0.25))
+
+        self.model.add(Conv2D(64, kernel_size=(3, 3), padding='same', activation='relu'))
+        self.model.add(BatchNormalization())
+        self.model.add(Dropout(0.25))
+
+        self.model.add(Conv2D(128, kernel_size=(3, 3), padding='same', activation='relu'))
+        self.model.add(BatchNormalization())
+        self.model.add(MaxPooling2D(pool_size=(2, 2)))
+        self.model.add(Dropout(0.25))
+
+        self.model.add(Flatten())
+
+        self.model.add(Dense(512, activation='relu'))
+        self.model.add(BatchNormalization())
+        self.model.add(Dropout(0.5))
+
+        self.model.add(Dense(128, activation='relu'))
+        self.model.add(BatchNormalization())
+        self.model.add(Dropout(0.5))
+
+        self.model.add(Dense(board_size * board_size))
+
+        if self.debug:
+            self.model.summary()
+        self.model.compile(loss=losses.SparseCategoricalCrossentropy(from_logits=True),
+                    optimizer=keras.optimizers.Adam(),
+                    metrics=['accuracy'])
+        self.probability_model = keras.Sequential([self.model, Softmax()])
+
     def create_ResNet_model(self, scaled_board_size = 32, board_size = 8):
         base_model = tf.keras.applications.ResNet152(weights = 'imagenet', include_top = False, input_shape = (scaled_board_size, scaled_board_size, 3))
         # for layer in base_model.layers:
@@ -71,7 +139,20 @@ class Predictor:
         if self.debug:
             self.model.summary()
         self.model.compile(optimizer='adam', loss=losses.sparse_categorical_crossentropy, metrics=['accuracy'])
-        self.probability_model = keras.Sequential([self.model, tf.keras.layers.Softmax()])
+        self.probability_model = keras.Sequential([self.model, Softmax()])
+
+    def create_VGG19_model(self, scaled_board_size = 32, board_size = 8):
+        base_model = VGG19(weights = 'imagenet', include_top = False, input_shape = (scaled_board_size, scaled_board_size, 3))
+
+        x = layers.Flatten()(base_model.output)
+        x = layers.Dense(512, activation='relu')(x)
+        x = layers.Dropout(0.5)(x)
+        predictions = layers.Dense(board_size * board_size, activation = 'softmax')(x)
+        self.model = Model(inputs = base_model.input, outputs = predictions)
+        if self.debug:
+            self.model.summary()
+        self.model.compile(optimizer='adam', loss=losses.sparse_categorical_crossentropy, metrics=['accuracy'])
+        self.probability_model = keras.Sequential([self.model, Softmax()])
 
     def train_model(self, color, location, checkpoint, max_loaded_matches, split_validation):
         data = Helpers.get_games_from_dataset(location)
@@ -167,9 +248,8 @@ class Predictor:
         train_labels = np.asarray(train_labels)
         test_data = np.asarray(test_data)
         test_labels = np.asfarray(test_labels)
-
-        if self.debug: 
-            self.logger.log_info(f'Loaded: {len(train_data)}, {len(train_labels)}, {len(test_data)}, {len(test_labels)},')
+ 
+        self.logger.log_info(f'Loaded: {len(train_data)}, {len(train_labels)}, {len(test_data)}, {len(test_labels)},')
 
         self.model.fit(train_data, train_labels, batch_size=self.batch_size ,epochs=self.epochs, validation_data=(test_data, test_labels))  
         self.model.save_weights(filepath=checkpoint)
@@ -190,7 +270,7 @@ class Predictor:
             normalized_bench_move = Helpers.normalize(board_bench[move_index], -58, 100)
             
             pred_value = pred[0][move_index]
-            actual_value = math.log((pred_value * 0.5)) + math.log((normalized_heur_move * 0.20)) + math.log((normalized_bench_move * 0.30))
+            actual_value = math.log((pred_value * 0.4)) + math.log((normalized_heur_move * 0.25)) + math.log((normalized_bench_move * 0.35))
             if actual_value > best_move[1]:
                 best_move[0] = (i, j)
                 best_move[1] = actual_value

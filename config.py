@@ -1,6 +1,6 @@
 settings = dict(
     number_of_games = 10,
-    load_model=True,
+    load_model=False,
     color = 'black', # black or white
     bot_level = 1, # 1 or 2,
     show_debug=False,
@@ -12,9 +12,9 @@ settings = dict(
 )
 
 model = dict(
-    model_type='cnn',
-    batch_size = 32,
-    epochs = 20,
-    max_loaded_matches = 1000,
+    model_type='vgg19',
+    batch_size = 32, # 32
+    epochs = 20, # 20
+    max_loaded_matches = 400, # 1500, 1000
     split_validation = 0.8
 )

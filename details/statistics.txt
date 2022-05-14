@@ -8,6 +8,10 @@ Epoch 20/20
 
 ------------------------------------
 
+1157/1157 [==============================] - 161s 139ms/step - loss: 1.8200 - accuracy: 0.4663 - val_loss: 1.9062 - val_accuracy: 0.4212
+
+-----------------------------------
+
 
 *** 0.4 - 0.25 - 0.35
 
@@ -25,3 +29,5 @@ Epoch 20/20
 ---
 
 [INFO]: Number of games: 200, wins: 98, draws: 6, losses: 96
+
+bot level 2: [INFO]: Number of games: 10, wins: 4, draws: 1, losses: 5
