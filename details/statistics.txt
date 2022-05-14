@@ -21,3 +21,7 @@ Epoch 20/20
 *** 0.5 - 0.2 - 0.3
 
 [INFO]: Number of games: 5, wins: 4, draws: 1, losses: 0
+
+---
+
+[INFO]: Number of games: 200, wins: 98, draws: 6, losses: 96
