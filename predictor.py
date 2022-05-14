@@ -1,5 +1,4 @@
 import random
-import sys
 from soupsieve import match
 from tensorflow import keras
 from tensorflow.keras import layers, models, losses, Model

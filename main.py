@@ -1,7 +1,3 @@
-from pydoc import Helper
-
-from django import conf
-from coder import Coder
 from gamegym import GameGym
 from helpers import Helpers
 from logger import Logger

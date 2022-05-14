@@ -3,8 +3,6 @@ import csv
 from shutil import move
 import xml.etree.ElementTree as ET
 
-from regex import W
-
 class Helpers:
 
     @staticmethod

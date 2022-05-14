@@ -1,4 +1,3 @@
-from numpy import full
 import requests
 from boardlogic import BoardLogic
 from helpers import *
