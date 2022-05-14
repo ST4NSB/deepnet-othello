@@ -191,7 +191,7 @@ class Predictor:
             normalized_bench_move = Helpers.normalize(board_bench[move_index], -58, 100)
             
             pred_value = pred[0][move_index]
-            actual_value = math.log((pred_value * 0.4)) + math.log((normalized_heur_move * 0.25)) + math.log((normalized_bench_move * 0.35))
+            actual_value = math.log((pred_value * 0.5)) + math.log((normalized_heur_move * 0.20)) + math.log((normalized_bench_move * 0.30))
             if actual_value > best_move[1]:
                 best_move[0] = (i, j)
                 best_move[1] = actual_value

@@ -35,8 +35,9 @@ class Helpers:
 
     @staticmethod
     def normalize(value, min, max):
+        lowest_value = 0.001 # 0.0000000000000001
         res = (value - min) / (max - min)
-        return res if res > 0.0 else 0.0000000000000001
+        return res if res > 0.0 else lowest_value
 
     @staticmethod
     def get_games_from_xml(xml_location):

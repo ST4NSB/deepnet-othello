@@ -9,5 +9,15 @@ Epoch 20/20
 ------------------------------------
 
 
+*** 0.4 - 0.25 - 0.35
 
 [INFO]: Number of games: 20, wins: 8, draws: 4, losses: 8
+
+-----
+
+[INFO]: Number of games: 20, wins: 13, draws: 1, losses: 6
+
+
+*** 0.5 - 0.2 - 0.3
+
+[INFO]: Number of games: 5, wins: 4, draws: 1, losses: 0
