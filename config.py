@@ -6,9 +6,9 @@ settings = dict(
     show_debug=False,
     save_games=False,
     checkpoint_location='checkpoints\\model_weights.h5',
-    dataset_location='othello_dataset.csv',
-    xml_location='othello_xml.xml',
-    my_games_location='othello_self_games.csv'
+    dataset_location='datasets\\othello_dataset.csv',
+    xml_location='datasets\\othello_xml.xml',
+    my_games_location='datasets\\othello_self_games.csv'
 )
 
 model = dict(
