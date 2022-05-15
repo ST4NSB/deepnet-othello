@@ -35,3 +35,6 @@ bot level 2: [INFO]: Number of games: 10, wins: 4, draws: 1, losses: 5
 --- 4conv - 0.5 - 0.25 - 0.25
 
 [INFO]: Number of games: 20, wins: 15, draws: 1, losses: 4
+
+
+[INFO]: Number of games: 100, wins: 74, draws: 0, losses: 26
