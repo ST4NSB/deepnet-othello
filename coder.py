@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib.pyplot as plt
 
 # class for encoding & decoding othello table
 # 1 for black, -1 for white, 0 for none
