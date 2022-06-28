@@ -2,11 +2,13 @@
 
 Implemented a Deep Neural network to play on https://www.eothello.com/
 
-# How to run it
+# Install & Run
 
 - create an account on https://www.eothello.com/
 - create an .env file in project which will contain a COOKIE field key
 - On https://www.eothello.com/, go to network tab, go to www.eothello.com/ request, and copy the cookie value field from the Request Headers
+- in terminal, clone the repo with: git clone https://github.com/ST4NSB/dn-othello.git
+- in config.py, adjust the settings as you like
 - in terminal, run: python .\main.py
 
 # Architecture
