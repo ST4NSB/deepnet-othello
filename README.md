@@ -18,7 +18,7 @@ Implemented a Deep Neural network to play on https://www.eothello.com/
 # Demo
 
 ![image](https://user-images.githubusercontent.com/38291834/176273687-17511b0e-f275-4422-b99d-3d9487a07b88.png)
-![image](https://user-images.githubusercontent.com/38291834/176273793-a5b74f84-d2b6-4d09-8ea5-6f8a14f60c35.png)
+<img src="https://user-images.githubusercontent.com/38291834/176273793-a5b74f84-d2b6-4d09-8ea5-6f8a14f60c35.png" width="249" height="221" />
 
 # MIT License
 
