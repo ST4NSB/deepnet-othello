@@ -25,6 +25,8 @@ class Coder:
                     arr[i][j] = [1., 0., 0.]
 
         arr = arr.repeat(scale_up_board,axis=0).repeat(scale_up_board,axis=1) # this scales board up by $scale_up_board
+        #plt.imshow(arr)
+        #plt.show()
         return arr
 
     @staticmethod
