@@ -48,8 +48,8 @@ if __name__ == "__main__":
     if config.settings['save_games']:
         Helpers.save_csv(games, config.settings['my_games_location'])
 
-    plt.plot(win_history)
-    plt.show()
+    # plt.plot(win_history)
+    # plt.show()
 
     games = config.settings['number_of_games']
     losses = games - wins - draws
